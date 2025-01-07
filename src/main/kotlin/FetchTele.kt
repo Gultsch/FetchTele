@@ -31,6 +31,10 @@ class TeleFetcher {
     ): TeleResult {
         val url = TeleUrl.buildUrl(teleType, pageNumber)
 
+        return fetch(url)
+    }
+
+    suspend fun fetch(url: TeleUrl): TeleResult {
         try {
             val response = httpClient.get(url.url)
 
@@ -125,6 +129,8 @@ class TeleUrl internal constructor(val url: String, val teleUrlType: TeleUrlType
             val sections = teleType.sections
             val categories = teleType.categories
             val tag = teleType.tag
+            val entryName = teleType.entryName
+
             val desiredPage = page.desiredPage
 
             var url = "https://cosplaytele.com/"
@@ -135,6 +141,11 @@ class TeleUrl internal constructor(val url: String, val teleUrlType: TeleUrlType
                 type = TeleUrlType.SPECIAL_SECTION
 
                 if (desiredPage != 1 || categories != null || tag != null) throw TeleException("Special section page has no page number, categories or tags.")
+            } else if (entryName != null) {
+                url += "${entryName}/"
+                type = TeleUrlType.ENTRY
+
+                if (desiredPage != 1 || categories != null || tag != null) throw TeleException("Entry page has no page number, categories or tags.")
             } else {
                 if (categories != null) {
                     url += "category/$categories/"
@@ -152,10 +163,6 @@ class TeleUrl internal constructor(val url: String, val teleUrlType: TeleUrlType
             println("URL: $url, Type: $type")
 
             return TeleUrl(url, type)
-        }
-
-        fun buildEntryUrl(entryName: String): TeleUrl {
-            return TeleUrl("https://cosplaytele.com/$entryName/", TeleUrlType.ENTRY)
         }
     }
 }
@@ -188,7 +195,8 @@ class TelePageNumber(val desiredPage: Int = 1) {
 class TeleType(
     val sections: String? = TeleSections.NONE,
     val categories: String? = TeleCategories.NONE,
-    val tag: String? = TeleTags.NONE
+    val tag: String? = TeleTags.NONE,
+    val entryName: String? = null
 ) {
     companion object {
         val default = TeleType()
