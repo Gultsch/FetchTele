@@ -1,21 +1,39 @@
 ﻿import kotlinx.coroutines.runBlocking
+import lib.fetchtele.TeleEntryQuery
 import lib.fetchtele.TeleFetcher
-import lib.fetchtele.TeleType
-import lib.fetchtele.TeleUrl
-import org.junit.jupiter.api.Test
+import lib.fetchtele.TeleFetcherConfig
+import lib.fetchtele.TeleListQuery
+import kotlin.test.Test
+import kotlin.test.assertNotNull
 
-class Test {
+class TeleTest {
+    val teleFetcher = TeleFetcher(TeleFetcherConfig(proxy = "http://127.0.0.1:7890"))
+
     @Test
-    fun test1() = runBlocking {
-        val teleFetcher = TeleFetcher()
-        val teleResult = teleFetcher.fetch()
+    fun testList() = runBlocking {
+        println("访问首页列表")
+        var teleList = teleFetcher.fetch(TeleListQuery())
 
-        teleResult.getTeleEntrySummaries().forEach {
+        assert(teleList.isNotEmpty())
+        teleList.forEach {
             println(it)
         }
 
-        teleFetcher.fetch(TeleType(entryName = "sora-kasugano-11"))
+        println("访问特定列表：分类：Nude，第二页")
+        assert(teleList.isNotEmpty())
+        teleList = teleFetcher.fetch(TeleListQuery(categories = "nude", page = 2))
 
-        return@runBlocking
+        teleList.forEach {
+            println(it)
+        }
+    }
+
+    @Test
+    fun testEntry() = runBlocking {
+        println("访问特定作品：raiden-shogun-38")
+
+        val teleEntry = teleFetcher.fetch(TeleEntryQuery(entryId = "raiden-shogun-38"))
+
+        println(teleEntry)
     }
 }
