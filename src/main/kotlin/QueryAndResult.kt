@@ -1,5 +1,6 @@
 ﻿package lib.fetchtele
 
+import io.ktor.http.encodeURLQueryComponent
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
@@ -20,6 +21,7 @@ data class TeleLink(
 class TeleListQuery(
     val categories: String? = TeleCategories.NONE,
     val tag: String? = TeleTags.NONE,
+    val keyword: String? = null,
     val page: Int = 1,
 ) : TeleQuery<List<TeleEntrySummary>> {
     override fun getUrl(): String {
@@ -27,11 +29,15 @@ class TeleListQuery(
 
         // 处理分类或者标签
         if (categories != null) {
-            url += "category/$categories/"
+            if (tag != null || keyword != null) throw TeleException("Categories page has no tags or keywords.")
 
-            if (tag != null) throw TeleException("Categories page has no tags.")
+            url += "category/$categories/"
         } else if (tag != null) {
+            if (keyword != null) throw TeleException("Tags page has no keywords.")
+
             url += "tag/$tag/"
+        } else if (keyword != null) {
+            url += "?s=${keyword.encodeURLQueryComponent()}"
         }
 
         // 处理分页
@@ -39,7 +45,7 @@ class TeleListQuery(
             url += "page/$page/"
         }
 
-        println("URL: $url")
+        println("生成-列表查询Url：$url")
 
         return url
     }
