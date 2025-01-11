@@ -32,29 +32,26 @@ class TeleFetcher(teleFetcherConfig: TeleFetcherConfig = TeleFetcherConfig()) {
     init {
     }
 
-    suspend fun <RESULT_TYPE> fetch(query: TeleQuery<RESULT_TYPE>): RESULT_TYPE {
-        try {
-            val url = query.getUrl()
-
+    suspend fun <RESULT_TYPE> fetch(query: TeleQuery<RESULT_TYPE>): TeleResult<RESULT_TYPE> {
+        return try {
+            val url = query.url
             val response = httpClient.get(url)
 
-            if (response.status.value != 200) throw TeleException("HttpClient failed to fetch: ${url}.")
+            if (response.status.value != 200) {
+                TeleResult.Failure(TeleException("HttpClient failed to fetch (${response.status.value}): $url"))
+            } else {
+                try {
+                    val bodyText = response.bodyAsText()
+                    val document = Jsoup.parse(bodyText)
+                    val result = query.parseDocument(document)
 
-            try {
-                val bodyText= response.bodyAsText()
-
-                // println("解析-文档：$bodyText")
-
-                val document = Jsoup.parse(bodyText)
-
-                val result = query.parseDocument(document)
-
-                return result
-            } catch (e: Exception) {
-                throw TeleException("Failed to parse response: ${e.stackTraceToString()}")
+                    TeleResult.Success(result)
+                } catch (e: Exception) {
+                    TeleResult.Failure(TeleException("Failed to parse response: ${e.stackTraceToString()}"))
+                }
             }
         } catch (e: Exception) {
-            throw TeleException("Failed to fetch: ${e.stackTraceToString()}")
+            TeleResult.Failure(TeleException("Failed to fetch: ${e.stackTraceToString()}"))
         }
     }
 

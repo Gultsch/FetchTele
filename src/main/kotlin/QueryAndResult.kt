@@ -6,8 +6,13 @@ import org.jsoup.nodes.Element
 
 const val TELE_BASE_URL = "https://cosplaytele.com/"
 
+sealed class TeleResult<RESULT_TYPE> {
+    data class Success<RESULT_TYPE>(val data: RESULT_TYPE) : TeleResult<RESULT_TYPE>()
+    data class Failure<RESULT_TYPE>(val error: Throwable) : TeleResult<RESULT_TYPE>()
+}
+
 interface TeleQuery<RESULT_TYPE> {
-    fun getUrl(): String
+    val url: String
     fun parseDocument(document: Document): RESULT_TYPE
 }
 
@@ -18,38 +23,7 @@ data class TeleLink(
     val text: String? = null,
 )
 
-class TeleListQuery(
-    val categories: String? = TeleCategories.NONE,
-    val tag: String? = TeleTags.NONE,
-    val keyword: String? = null,
-    val page: Int = 1,
-) : TeleQuery<List<TeleEntrySummary>> {
-    override fun getUrl(): String {
-        var url = TELE_BASE_URL
-
-        // 处理分类或者标签
-        if (categories != null) {
-            if (tag != null || keyword != null) throw TeleException("Categories page has no tags or keywords.")
-
-            url += "category/$categories/"
-        } else if (tag != null) {
-            if (keyword != null) throw TeleException("Tags page has no keywords.")
-
-            url += "tag/$tag/"
-        } else if (keyword != null) {
-            url += "?s=${keyword.encodeURLQueryComponent()}"
-        }
-
-        // 处理分页
-        if (page > 1) {
-            url += "page/$page/"
-        }
-
-        println("生成-列表查询Url：$url")
-
-        return url
-    }
-
+class TeleListQuery private constructor(override val url: String) : TeleQuery<List<TeleEntrySummary>> {
     override fun parseDocument(document: Document): List<TeleEntrySummary> {
         try {
             val entries = mutableListOf<TeleEntrySummary>()
@@ -76,6 +50,39 @@ class TeleListQuery(
             throw TeleException("Failed to parse list: ${e.stackTraceToString()}")
         }
     }
+
+    companion object {
+        fun build(
+            categories: TeleCategoryRes? = null,
+            tag: TeleTagRes? = null,
+            keyword: TeleKeywordRes? = null,
+            page: Int = 1,
+        ): TeleListQuery {
+            var url = TELE_BASE_URL
+
+            // 处理分类或者标签
+            if (categories != null) {
+                if (tag != null || keyword != null) throw TeleException("Categories page has no tags or keywords.")
+
+                url += "category/${categories.data}/"
+            } else if (tag != null) {
+                if (keyword != null) throw TeleException("Tags page has no keywords.")
+
+                url += "tag/${tag.data}/"
+            } else if (keyword != null) {
+                url += "?s=${keyword.encoded}"
+            }
+
+            // 处理分页
+            if (page > 1) {
+                url += "page/$page/"
+            }
+
+            println("创建查询-列表：$url")
+
+            return TeleListQuery(url)
+        }
+    }
 }
 
 data class TeleEntrySummary(
@@ -85,12 +92,8 @@ data class TeleEntrySummary(
 )
 
 class TeleEntryQuery(
-    val entryId: String,
+    override val url: String
 ) : TeleQuery<TeleEntry> {
-    override fun getUrl(): String {
-        return "$TELE_BASE_URL$entryId/"
-    }
-
     override fun parseDocument(document: Document): TeleEntry {
         try {
             // 标题
@@ -216,6 +219,14 @@ class TeleEntryQuery(
                     text = fallbackText
                 )
             }
+        }
+
+        fun build(entryId: String): TeleEntryQuery {
+            val url = "$TELE_BASE_URL$entryId/"
+
+            println("创建查询-实体：$url")
+
+            return TeleEntryQuery(url)
         }
     }
 }
