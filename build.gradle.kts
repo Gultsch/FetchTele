@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "2.0.21"
+    id("com.gradleup.shadow") version "9.0.0-beta4"
 }
 
 group = "lib.fetchtele"
@@ -22,9 +23,31 @@ dependencies {
     implementation("io.ktor:ktor-client-cio:$ktor_version")
 }
 
-tasks.test {
-    useJUnitPlatform()
+tasks {
+    test {
+        useJUnitPlatform()
+    }
+
+    shadowJar {
+        archiveClassifier.set("deps-inlined")
+    }
+
+    jar {
+        archiveClassifier.set("deps-not-inlined")
+    }
+
+    register("packLibrary") {
+        group = "build"
+        description = "打包内联依赖以及未内联的库"
+
+        dependsOn("shadowJar", "jar")
+
+        doLast {
+            println("内联依赖以及未内联的库打包完成，参见build/libs/")
+        }
+    }
 }
+
 kotlin {
     jvmToolchain(21)
 }

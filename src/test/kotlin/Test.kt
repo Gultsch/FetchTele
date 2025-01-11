@@ -18,6 +18,9 @@ class TeleTest {
         )
     )
 
+    // TODO：有时间整点和构建Res、Query、Result有关的测试（虽然开发者代码写得好，高阶测试都能过，这点恐怕不在话下罢）
+    // TODO：另外，请求结果的数据是不是也要验证一下，是否和预期一致？（显然一致的，不过还是验证一下罢）
+
     @Test
     fun test01() = runBlocking {
         println("请求首页列表")
