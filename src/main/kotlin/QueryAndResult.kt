@@ -60,22 +60,22 @@ class TeleListQuery private constructor(override val url: String) : TeleQuery<Li
         ): TeleListQuery {
             var url = TELE_BASE_URL
 
-            // 处理分类或者标签
-            if (categories != null) {
-                if (tag != null || keyword != null) throw TeleException("Categories page has no tags or keywords.")
+            // 如果有关键词，优先处理关键词逻辑
+            if (keyword != null) {
+                if (page > 1) url += "page/$page/"
 
-                url += "category/${categories.data}/"
-            } else if (tag != null) {
-                if (keyword != null) throw TeleException("Tags page has no keywords.")
-
-                url += "tag/${tag.data}/"
-            } else if (keyword != null) {
                 url += "?s=${keyword.encoded}"
-            }
+            } else {
+                // 处理分类或者标签的逻辑
+                if (categories != null) {
+                    if (tag != null) throw TeleException("Categories page has no tags")
+                    url += "category/${categories.data}/"
+                } else if (tag != null) {
+                    url += "tag/${tag.data}/"
+                }
 
-            // 处理分页
-            if (page > 1) {
-                url += "page/$page/"
+                // 如果有分页，并且不是关键词情况，统一加页码
+                if (page > 1) url += "page/$page/"
             }
 
             println("创建查询-列表：$url")
