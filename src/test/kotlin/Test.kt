@@ -186,9 +186,9 @@ class TeleTest {
 
     @Test
     fun test05() = runBlocking {
-        println("请求特定实体：raiden-shogun-38")
+        println("请求特定实体：mashu-kyrielight-dancer")
 
-        val result = teleFetcher.fetch(TeleEntryQuery.build(entryId = "raiden-shogun-38"))
+        val result = teleFetcher.fetch(TeleEntryQuery.build(entryId = "mashu-kyrielight-dancer"))
 
         when (result) {
             is TeleResult.Success -> {

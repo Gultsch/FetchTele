@@ -119,27 +119,29 @@ class TeleEntryQuery(
             var photos: String? = null
             var fileSize: String? = null
             var unzipPassword: String? = null
-            document.selectFirst("blockquote")!!.select("strong").forEach { strong ->
-                val strongText = strong.text()
+            document.selectFirst("blockquote")!!.let {
+                it.select("strong").forEach { strong ->
+                    val strongText = strong.text()
 
-                val pair = strongText.split(": ")
+                    val pair = strongText.split(": ")
 
-                println("解析-元数据：${pair[0]}")
+                    println("解析-元数据：${pair[0]}")
 
-                when (pair[0]) {
-                    "Cosplayer" -> cosplayer = strong.parseLinkableStrong(pair[1])
+                    when (pair[0]) {
+                        "Cosplayer" -> cosplayer = strong.parseLinkableStrong(pair[1])
 
-                    "Character" -> character = strong.parseLinkableStrong(pair[1])
+                        "Character" -> character = strong.parseLinkableStrong(pair[1])
 
-                    "Appear In" -> appearIn = strong.parseLinkableStrong(pair[1])
+                        "Appear In" -> appearIn = strong.parseLinkableStrong(pair[1])
 
-                    "Photos" -> photos = pair[1]
+                        "Photos" -> photos = pair[1]
 
-                    "File Size" -> fileSize = pair[1]
+                        "File Size" -> fileSize = pair[1]
 
-                    "Unzip Password:" -> unzipPassword = strong.selectFirst("input")!!.attr("value")
+                        "Unzip Password:" -> unzipPassword = it.selectFirst("input")!!.attr("value")
 
-                    else -> println("解析-找到未知元数据：${pair[0]}")
+                        else -> println("解析-找到未知元数据：${pair[0]}")
+                    }
                 }
             }
 
