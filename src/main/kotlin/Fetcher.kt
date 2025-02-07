@@ -1,8 +1,8 @@
 package lib.fetchtele
 
 import io.ktor.client.*
+import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.engine.ProxyBuilder
-import io.ktor.client.engine.cio.CIO
 import io.ktor.client.engine.http
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.*
@@ -10,14 +10,17 @@ import io.ktor.client.statement.*
 import org.jsoup.Jsoup
 
 data class TeleFetcherConfig(
-    val proxy: String? = null,
+    val ktorEngine: HttpClientEngineFactory<*>,
+    val httpProxyUrl: String? = null,
     val timeout: Long = 10_000,
+    // 暂无法实现
+    // val enableDebugLog: Boolean = false,
 )
 
-class TeleFetcher(teleFetcherConfig: TeleFetcherConfig = TeleFetcherConfig()) {
-    val httpClient = HttpClient(CIO) {
+class TeleFetcher(teleFetcherConfig: TeleFetcherConfig) {
+    val httpClient = HttpClient(teleFetcherConfig.ktorEngine) {
         // 如果有代理配置，就设置代理
-        teleFetcherConfig.proxy?.let {
+        teleFetcherConfig.httpProxyUrl?.let {
             engine {
                 proxy = ProxyBuilder.http(it)
             }

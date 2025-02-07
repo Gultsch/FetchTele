@@ -1,4 +1,5 @@
-﻿import kotlinx.coroutines.runBlocking
+﻿import io.ktor.client.engine.cio.CIO
+import kotlinx.coroutines.runBlocking
 import lib.fetchtele.TELE_BASE_URL
 import lib.fetchtele.TeleCategoryRes
 import lib.fetchtele.TeleEntryQuery
@@ -19,7 +20,9 @@ import kotlin.test.assertFails
 class TeleTest {
     val teleFetcher = TeleFetcher(
         TeleFetcherConfig(
-            proxy = "http://127.0.0.1:7890" // 此处代理配置为开发者测试用
+            ktorEngine = CIO,
+            // enableDebugLog = true,
+            // httpProxyUrl = "http://127.0.0.1:7890"
         )
     )
 

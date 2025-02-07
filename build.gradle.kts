@@ -18,9 +18,9 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
+    testImplementation("io.ktor:ktor-client-cio:$ktor_version")
     implementation("org.jsoup:jsoup:$jsoup_version")
     implementation("io.ktor:ktor-client-core:$ktor_version")
-    implementation("io.ktor:ktor-client-cio:$ktor_version")
 }
 
 tasks {
