@@ -6,7 +6,7 @@ plugins {
 group = "lib.fetchtele"
 
 // 年份/月份/修订
-version = "2025.2.1"
+version = "2025.2.2"
 
 val ktor_version: String by project
 val jsoup_version: String by project

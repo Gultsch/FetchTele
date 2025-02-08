@@ -7,6 +7,7 @@ import lib.fetchtele.TeleEntryRes
 import lib.fetchtele.TeleFetcher
 import lib.fetchtele.TeleFetcherConfig
 import lib.fetchtele.TeleKeywordRes
+import lib.fetchtele.TeleList
 import lib.fetchtele.TeleListQuery
 import lib.fetchtele.TeleResult
 import lib.fetchtele.TeleTagRes
@@ -117,23 +118,7 @@ class TeleTest {
         println("请求首页列表")
         val result = teleFetcher.fetch(TeleListQuery.build())
 
-        when (result) {
-            is TeleResult.Success -> {
-                val teleList = result.data
-
-                assert(teleList.isNotEmpty()) { "列表为空，显然不对" }
-                teleList.forEach {
-                    println(it)
-                }
-
-                println("请求成功")
-            }
-
-            is TeleResult.Failure -> {
-                println("请求失败：${result.error.message}")
-                throw result.error
-            }
-        }
+        result.check()
     }
 
     @Test
@@ -141,23 +126,7 @@ class TeleTest {
         println("请求特定列表：分类：Nude，第二页")
         val result = teleFetcher.fetch(TeleListQuery.build(categories = TeleCategoryRes.NUDE, page = 2))
 
-        when (result) {
-            is TeleResult.Success -> {
-                val teleList = result.data
-
-                assert(teleList.isNotEmpty()) { "列表为空，显然不对" }
-                teleList.forEach {
-                    println(it)
-                }
-
-                println("请求成功")
-            }
-
-            is TeleResult.Failure -> {
-                println("请求失败：${result.error.message}")
-                throw result.error
-            }
-        }
+        result.check()
     }
 
     @Test
@@ -165,23 +134,7 @@ class TeleTest {
         println("请求特定列表：关键词：向日")
         val result = teleFetcher.fetch(TeleListQuery.build(keyword = TeleKeywordRes("向日")))
 
-        when (result) {
-            is TeleResult.Success -> {
-                val teleList = result.data
-
-                assert(teleList.isNotEmpty())
-                teleList.forEach {
-                    println(it)
-                }
-
-                println("请求成功")
-            }
-
-            is TeleResult.Failure -> {
-                println("请求失败：${result.error.message}")
-                throw result.error
-            }
-        }
+        result.check()
     }
 
     @Test
@@ -201,6 +154,28 @@ class TeleTest {
                 println("请求失败：${result.error.message}")
                 throw result.error
             }
+        }
+    }
+}
+
+fun TeleResult<TeleList>.check() {
+    when (this) {
+        is TeleResult.Success -> {
+            val teleList = this.data
+
+            assert(teleList.entrySummaries.isNotEmpty()) { "列表为空，显然不对" }
+            teleList.entrySummaries.forEach {
+                println(it)
+            }
+
+            println("列表页信息：${teleList.page}")
+
+            println("请求成功")
+        }
+
+        is TeleResult.Failure -> {
+            println("请求失败：${this.error.message}")
+            throw this.error
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿package lib.fetchtele
 
-import io.ktor.http.encodeURLQueryComponent
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
@@ -23,8 +22,12 @@ data class TeleLink(
     val text: String? = null,
 )
 
-class TeleListQuery private constructor(override val url: String) : TeleQuery<List<TeleEntrySummary>> {
-    override fun parseDocument(document: Document): List<TeleEntrySummary> {
+data class TelePageInfo(val min: Int, val current: Int, val max: Int)
+
+data class TeleList(val entrySummaries: List<TeleEntrySummary>, val page: TelePageInfo)
+
+class TeleListQuery private constructor(override val url: String) : TeleQuery<TeleList> {
+    override fun parseDocument(document: Document): TeleList {
         try {
             val entries = mutableListOf<TeleEntrySummary>()
 
@@ -45,7 +48,30 @@ class TeleListQuery private constructor(override val url: String) : TeleQuery<Li
                     }
                 }
 
-            return entries
+            val pager = document.selectFirst(".page-numbers.nav-pagination")
+
+            val pageInfo = if (pager == null) {
+                TelePageInfo(1, 1, 1) // 扣一送火麒麟
+            } else {
+                // 防止第一个元素是上一页按钮
+                val firstNumEle = pager.firstElementChild()!!.let {
+                    if (it.firstElementChild()!!.hasAttr("aria-label")) pager.child(1)
+                    else it
+                }
+
+                // println(firstNumEle)
+                val min = firstNumEle.firstElementChild()!!.text().toInt()
+
+                // 当前页码
+                val current = pager.selectFirst("span.current")!!.text().toInt()
+
+                // 这个包有的
+                val max = pager.children()[pager.childrenSize() - 2].firstElementChild()!!.text().toInt()
+
+                TelePageInfo(min, current, max)
+            }
+
+            return TeleList(entries, pageInfo)
         } catch (e: Exception) {
             throw TeleException("Failed to parse list: ${e.stackTraceToString()}")
         }
