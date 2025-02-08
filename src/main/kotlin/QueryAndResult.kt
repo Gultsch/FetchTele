@@ -117,8 +117,9 @@ data class TeleEntrySummary(
     val imageUrl: String
 )
 
-class TeleEntryQuery(
-    override val url: String
+class TeleEntryQuery private constructor(
+    override val url: String,
+    val id: String
 ) : TeleQuery<TeleEntry> {
     override fun parseDocument(document: Document): TeleEntry {
         try {
@@ -210,6 +211,7 @@ class TeleEntryQuery(
             }
 
             val teleEntry = TeleEntry(
+                id = id,
                 title = title,
                 categories = categories,
                 pageMetaData = TeleEntry.TeleEntryMetaData(
@@ -254,12 +256,13 @@ class TeleEntryQuery(
 
             println("创建查询-实体：$url")
 
-            return TeleEntryQuery(url)
+            return TeleEntryQuery(url, entryId)
         }
     }
 }
 
 data class TeleEntry(
+    val id: String,
     val title: String,
     val categories: List<TeleLink>,
     val pageMetaData: TeleEntryMetaData,

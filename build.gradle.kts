@@ -6,8 +6,9 @@ plugins {
 group = "lib.fetchtele"
 
 // 年份/月份/修订
-version = "2025.2.2"
+version = "2025.2.3"
 
+// 这个在gradle.properties里，记得跟进最新版本
 val ktor_version: String by project
 val jsoup_version: String by project
 
