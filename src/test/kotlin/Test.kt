@@ -111,6 +111,9 @@ class TeleTest {
             "${TELE_BASE_URL}page/2/?s=%E5%90%91%E6%97%A5",
             TeleListQuery.build(keyword = TeleKeywordRes("向日"), page = 2).url
         ) // 测试正确构建
+
+        println("测试构建：TeleEntryQuery")
+        assertEquals("${TELE_BASE_URL}mita/", TeleEntryQuery.build(entryId = TeleEntryRes("mita")).url)
     }
 
     @Test
@@ -141,7 +144,7 @@ class TeleTest {
     fun test05() = runBlocking {
         println("请求特定实体：mashu-kyrielight-dancer")
 
-        val result = teleFetcher.fetch(TeleEntryQuery.build(entryId = "mashu-kyrielight-dancer"))
+        val result = teleFetcher.fetch(TeleEntryQuery.build(entryId = TeleEntryRes("mashu-kyrielight-dancer")))
 
         when (result) {
             is TeleResult.Success -> {

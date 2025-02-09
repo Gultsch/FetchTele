@@ -119,7 +119,7 @@ data class TeleEntrySummary(
 
 class TeleEntryQuery private constructor(
     override val url: String,
-    val id: String
+    val id: String //
 ) : TeleQuery<TeleEntry> {
     override fun parseDocument(document: Document): TeleEntry {
         try {
@@ -251,12 +251,12 @@ class TeleEntryQuery private constructor(
             }
         }
 
-        fun build(entryId: String): TeleEntryQuery {
-            val url = "$TELE_BASE_URL$entryId/"
+        fun build(entryId: TeleEntryRes): TeleEntryQuery {
+            val url = "$TELE_BASE_URL${entryId.data}/"
 
             println("创建查询-实体：$url")
 
-            return TeleEntryQuery(url, entryId)
+            return TeleEntryQuery(url, entryId.data)
         }
     }
 }
