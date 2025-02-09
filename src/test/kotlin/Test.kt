@@ -134,6 +134,14 @@ class TeleTest {
 
     @Test
     fun test04() = runBlocking {
+        println("请求特定列表：关键词：rika，第二页")
+        val result = teleFetcher.fetch(TeleListQuery.build(keyword = TeleKeywordRes("rika"), page = 2))
+
+        result.check()
+    }
+
+    @Test
+    fun test05() = runBlocking {
         println("请求特定列表：关键词：向日")
         val result = teleFetcher.fetch(TeleListQuery.build(keyword = TeleKeywordRes("向日")))
 
@@ -141,7 +149,7 @@ class TeleTest {
     }
 
     @Test
-    fun test05() = runBlocking {
+    fun test06() = runBlocking {
         println("请求特定实体：mashu-kyrielight-dancer")
 
         val result = teleFetcher.fetch(TeleEntryQuery.build(entryId = TeleEntryRes("mashu-kyrielight-dancer")))

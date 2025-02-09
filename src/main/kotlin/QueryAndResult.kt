@@ -59,14 +59,20 @@ class TeleListQuery private constructor(override val url: String) : TeleQuery<Te
                     else it
                 }
 
+                // 防止最后一个元素是下一页按钮
+                val lastNumEle = pager.child(pager.childrenSize() - 1).let {
+                    if (it.firstElementChild()!!.hasAttr("aria-label")) pager.child(pager.childrenSize() - 2)
+                    else it
+                }
+
                 // println(firstNumEle)
                 val min = firstNumEle.firstElementChild()!!.text().toInt()
 
                 // 当前页码
                 val current = pager.selectFirst("span.current")!!.text().toInt()
 
-                // 这个包有的
-                val max = pager.children()[pager.childrenSize() - 2].firstElementChild()!!.text().toInt()
+
+                val max = lastNumEle.firstElementChild()!!.text().toInt()
 
                 TelePageInfo(min, current, max)
             }
