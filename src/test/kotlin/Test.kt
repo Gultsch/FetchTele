@@ -167,6 +167,46 @@ class TeleTest {
             }
         }
     }
+
+    @Test
+    fun test07() = runBlocking {
+        println("请求特定实体：jk-7（测试错版兼容性）")
+
+        val result = teleFetcher.fetch(TeleEntryQuery.build(entryId = TeleEntryRes("jk-7")))
+
+        when (result) {
+            is TeleResult.Success -> {
+                val teleEntry = result.data
+                println(teleEntry)
+                println("请求成功")
+            }
+
+            is TeleResult.Failure -> {
+                println("请求失败：${result.error.message}")
+                throw result.error
+            }
+        }
+    }
+
+    @Test
+    fun test08() = runBlocking {
+        println("请求特定实体：mai-shiranui-7")
+
+        val result = teleFetcher.fetch(TeleEntryQuery.build(entryId = TeleEntryRes("mai-shiranui-7")))
+
+        when (result) {
+            is TeleResult.Success -> {
+                val teleEntry = result.data
+                println(teleEntry)
+                println("请求成功")
+            }
+
+            is TeleResult.Failure -> {
+                println("请求失败：${result.error.message}")
+                throw result.error
+            }
+        }
+    }
 }
 
 fun TeleResult<TeleList>.check() {

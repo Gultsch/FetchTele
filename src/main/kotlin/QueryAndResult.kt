@@ -208,8 +208,8 @@ class TeleEntryQuery private constructor(
 
             // 图片
             val images = mutableListOf<TeleLink>()
-            document.select(".attachment-full.size-full").forEach {
-                val src = it.attr("src")
+            document.select(".gallery-item").forEach {
+                val src = it.firstElementChild()!!.firstElementChild()!!.attr("href")
 
                 println("解析-图片：$src")
 

@@ -18,7 +18,7 @@ data class TeleFetcherConfig(
 )
 
 class TeleFetcher(teleFetcherConfig: TeleFetcherConfig) {
-    val httpClient = HttpClient(teleFetcherConfig.ktorEngine) {
+    private val httpClient = HttpClient(teleFetcherConfig.ktorEngine) {
         // 如果有代理配置，就设置代理
         teleFetcherConfig.httpProxyUrl?.let {
             engine {
