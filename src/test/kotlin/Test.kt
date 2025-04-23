@@ -11,6 +11,9 @@ import lib.fetchtele.TeleList
 import lib.fetchtele.TeleListQuery
 import lib.fetchtele.TeleResult
 import lib.fetchtele.TeleTagRes
+import lib.fetchtele.TeleVideoQuery
+import lib.fetchtele.TeleVideoRes
+import lib.fetchtele.TeleVideoType
 import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.TestMethodOrder
 import kotlin.test.Test
@@ -64,6 +67,8 @@ class TeleTest {
             TeleTagRes.parse("${TELE_BASE_URL}tag/arknights/page/2/").data
         ) // 测试正确解析
 
+        // Sessions的不好搞
+
         println("测试构建：TeleKeywordRes")
         assertEquals("凉", TeleKeywordRes("凉").data) // 测试正确构建
         assertEquals("%E5%96%B5%E5%B0%8F", TeleKeywordRes("喵小").encoded) // 测试正确编码
@@ -88,6 +93,21 @@ class TeleTest {
         assertFails { TeleEntryRes.parse("$TELE_BASE_URL/") } // 测试报错：不含有数据内容
         assertFails { TeleEntryRes.parse("${TELE_BASE_URL}tag/dd/") } // 测试报错：拿非实体URL解析
         assertEquals("mita", TeleEntryRes.parse("${TELE_BASE_URL}mita/").data) // 测试正确解析
+
+        println("测试构建：TeleVideoRes")
+        val instance = TeleVideoRes("114514-senpai", TeleVideoType.COSSORA)
+        assertEquals("114514-senpai", instance.data) //构建测试：Data不匹配
+        assertEquals(TeleVideoType.COSSORA, instance.videoType) //构建测试：Type不匹配
+
+        println("测试解析器：TeleVideoRes")
+        assertFails { TeleVideoRes.parse("https://some.other.domain/video/12345") } // 测试报错：不支持的域
+        assertFails { TeleVideoRes.parse("这根本不是URL") } // 测试报错：完全无效的字符串
+        assertFails { TeleVideoRes.parse(TeleVideoType.COSSORA.baseUrl) } // 测试报错：只有Base URL
+        assertFails { TeleVideoRes.parse("${TeleVideoType.COSSORA.baseUrl}invalid/114514/yaju") } //测试报错：标识符含"/"
+        assertEquals(
+            "114514-senpai",
+            TeleVideoRes.parse("${TeleVideoType.COSSORA.baseUrl}114514-senpai").data
+        ) // 测试正确解析：Data提取错误
 
         println("测试构建：TeleListQuery")
         assertEquals(TELE_BASE_URL, TeleListQuery.build().url) // 测试正确构建
@@ -114,6 +134,12 @@ class TeleTest {
 
         println("测试构建：TeleEntryQuery")
         assertEquals("${TELE_BASE_URL}mita/", TeleEntryQuery.build(entryId = TeleEntryRes("mita")).url)
+
+        println("测试构建：TeleVideoQuery")
+        assertEquals(
+            "${TeleVideoType.COSSORA.baseUrl}114514-senpai",
+            TeleVideoQuery.build(TeleVideoRes("114514-senpai", TeleVideoType.COSSORA)).url
+        )
     }
 
     @Test
@@ -207,6 +233,25 @@ class TeleTest {
             }
         }
     }
+
+    @Test
+    fun test09() = runBlocking {
+        println("测试视频解析")
+
+        val result =
+            teleFetcher.fetch(TeleVideoQuery.build(videoRes = TeleVideoRes.parse("https://cossora.stream/embed/bcbe1033-02ff-4f58-8eb4-2670e07b38a4")))
+
+        when (result) {
+            is TeleResult.Success -> {
+                println("请求成功，请品鉴：${result.data}")
+            }
+
+            is TeleResult.Failure -> {
+                println("请求失败：${result.error.message}")
+                throw result.error
+            }
+        }
+    }
 }
 
 fun TeleResult<TeleList>.check() {
@@ -219,7 +264,7 @@ fun TeleResult<TeleList>.check() {
                 println(it)
             }
 
-            println("列表页信息：${teleList.page}")
+            println("列表页信息：${teleList.pageInfo}")
 
             println("请求成功")
         }

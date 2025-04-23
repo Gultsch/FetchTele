@@ -113,6 +113,7 @@ class TeleTagRes(override val data: String) : TeleRes<String> {
     }
 }
 
+// TODO：也需要弃用
 class TeleSectionRes(override val data: String) : TeleRes<String> {
     override val type: String = "section"
 
@@ -190,5 +191,80 @@ class TeleEntryRes(override val data: String) : TeleRes<String> {
             println("TeleEntryRes解析：$data")
             return TeleEntryRes(data)
         }
+    }
+}
+
+enum class TeleVideoType(val baseUrl: String) {
+    COSSORA("https://cossora.stream/embed/");
+    // Add other video types here with their base URLs, e.g.,
+    // OTHER_DOMAIN("https://other.video/play/")
+}
+
+// 特别一点，仅能由parse创建实例
+/**
+ * Represents a resolved video resource identifier from a specific domain.
+ *
+ * @property data The unique identifier for the video within its domain (e.g., "5471f32717").
+ * @property videoType The domain/type of the video source.
+ */
+class TeleVideoRes(override val data: String, val videoType: TeleVideoType) : TeleRes<String> {
+    override val type: String = "video" // Consistent type identifier
+
+    companion object : TeleResParser<String, String> {
+        init {
+            TeleUtils.registerTeleResParser(this)
+        }
+
+        /**
+         * Parses a raw URL string into a TeleVideoRes object.
+         * Extracts the video identifier and determines the video type.
+         *
+         * @param raw The raw URL string to parse (e.g., "https://cossora.stream/embed/5471f32717").
+         * @return A TeleVideoRes instance containing the identifier and type.
+         * @throws IllegalArgumentException if the URL format is invalid, missing the identifier,
+         *         or contains unexpected characters in the identifier part.
+         * @throws NotImplementedError if the URL does not match any known video domain prefixes.
+         */
+        override fun parse(raw: String): TeleVideoRes {
+            // 移除初始 URL() 检查
+
+            for (videoType in TeleVideoType.entries) {
+                if (raw.startsWith(videoType.baseUrl)) {
+                    // 检查是否只有 base URL，没有标识符
+                    if (raw.length == videoType.baseUrl.length) throw IllegalArgumentException(
+                        "URL is missing the video identifier part: $raw"
+                    )
+
+                    val data = raw.substring(videoType.baseUrl.length)
+
+                    // 基础校验：不允许为空：此情况理论上被上面的长度检查覆盖
+                    /*if (data.isEmpty()) {
+                        throw IllegalArgumentException(
+                            "Extracted video identifier cannot be empty: $raw"
+                        )
+                    }*/
+
+                    // 特定校验示例：不允许斜杠
+                    if (data.contains('/')) throw IllegalArgumentException(
+                        "Illegal character '/' found in video identifier part: $data"
+                    )
+                    // 添加更多特定域的 ID 格式校验...
+
+                    println("TeleVideoRes解析：类型=${videoType.name}，数据=$data")
+                    return TeleVideoRes(data, videoType)
+                }
+            }
+
+            // 如果循环结束都没有匹配到
+            throw NotImplementedError("Unsupported video URL prefix or domain: $raw")
+        }
+
+        // Extension function remains useful
+        // Consider adding null safety for url if TeleLink.url can be null
+        // fun TeleLink.toTeleVideoRes(): TeleVideoRes? = this.url?.let { parse(it) }
+        // Or throw if url is null, depending on desired behavior:
+        fun TeleLink.toTeleVideoRes(): TeleVideoRes = parse(
+            this.url ?: throw IllegalArgumentException("TeleLink URL cannot be null")
+        )
     }
 }

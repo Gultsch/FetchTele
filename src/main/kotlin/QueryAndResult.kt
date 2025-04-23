@@ -1,5 +1,9 @@
 ﻿package lib.fetchtele
 
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
+import lib.fetchtele.TeleVideoType.*
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
@@ -13,6 +17,9 @@ sealed class TeleResult<RESULT_TYPE> {
 interface TeleQuery<RESULT_TYPE> {
     val url: String
     fun parseDocument(document: Document): RESULT_TYPE
+
+    fun configureRequest(builder: HttpRequestBuilder) {
+    }
 }
 
 data class TeleLink(
@@ -22,9 +29,11 @@ data class TeleLink(
     val text: String? = null,
 )
 
-data class TelePageInfo(val min: Int, val current: Int, val max: Int)
+// Tele List
 
-data class TeleList(val entrySummaries: List<TeleEntrySummary>, val page: TelePageInfo)
+data class TeleListPageInfo(val min: Int, val current: Int, val max: Int)
+
+data class TeleList(val entrySummaries: List<TeleEntrySummary>, val pageInfo: TeleListPageInfo)
 
 class TeleListQuery private constructor(override val url: String) : TeleQuery<TeleList> {
     override fun parseDocument(document: Document): TeleList {
@@ -51,7 +60,7 @@ class TeleListQuery private constructor(override val url: String) : TeleQuery<Te
             val pager = document.selectFirst(".page-numbers.nav-pagination")
 
             val pageInfo = if (pager == null) {
-                TelePageInfo(1, 1, 1) // 扣一送火麒麟
+                TeleListPageInfo(1, 1, 1) // 扣一送火麒麟
             } else {
                 // 防止第一个元素是上一页按钮
                 val firstNumEle = pager.firstElementChild()!!.let {
@@ -74,7 +83,7 @@ class TeleListQuery private constructor(override val url: String) : TeleQuery<Te
 
                 val max = lastNumEle.firstElementChild()!!.text().toInt()
 
-                TelePageInfo(min, current, max)
+                TeleListPageInfo(min, current, max)
             }
 
             return TeleList(entries, pageInfo)
@@ -117,15 +126,36 @@ class TeleListQuery private constructor(override val url: String) : TeleQuery<Te
     }
 }
 
+// Tele Entry
+
 data class TeleEntrySummary(
     val title: TeleLink,
     val id: String,
     val imageUrl: String
 )
 
+data class TeleEntry(
+    val id: String,
+    val title: String,
+    val categories: List<TeleLink>,
+    val pageMetaData: TeleEntryMetaData,
+    val downloadLinks: List<TeleLink>,
+    val video: TeleLink?,
+    val images: List<TeleLink>,
+) {
+    data class TeleEntryMetaData(
+        val cosplayer: TeleLink?,
+        val character: TeleLink?,
+        val appearIn: TeleLink?,
+        val photos: String?,
+        val fileSize: String?,
+        val unzipPassword: String?,
+    )
+}
+
 class TeleEntryQuery private constructor(
     override val url: String,
-    val id: String //
+    private val id: String //
 ) : TeleQuery<TeleEntry> {
     override fun parseDocument(document: Document): TeleEntry {
         try {
@@ -267,21 +297,57 @@ class TeleEntryQuery private constructor(
     }
 }
 
-data class TeleEntry(
-    val id: String,
-    val title: String,
-    val categories: List<TeleLink>,
-    val pageMetaData: TeleEntryMetaData,
-    val downloadLinks: List<TeleLink>,
-    val video: TeleLink?,
-    val images: List<TeleLink>,
-) {
-    data class TeleEntryMetaData(
-        val cosplayer: TeleLink?,
-        val character: TeleLink?,
-        val appearIn: TeleLink?,
-        val photos: String?,
-        val fileSize: String?,
-        val unzipPassword: String?,
-    )
+// Tele Video
+
+data class TeleVideo(val videoUrl: String)
+
+class TeleVideoQuery private constructor(override val url: String, private val videoType: TeleVideoType) :
+    TeleQuery<TeleResult<TeleVideo>> {
+    override fun parseDocument(document: Document): TeleResult<TeleVideo> = when (videoType) {
+        COSSORA -> {
+            val chosenOne = document.select("script")[10].data().lines()
+
+            var url = chosenOne[3].run { substring(26, length - 2) }
+            var key = chosenOne[6].run { substring(56, length - 3) }
+
+            /*chosenOne.lines().forEachIndexed { index, line ->
+                println("第 $index 行啊 $index 行：$line")
+
+                // 第3，6行
+
+                when {
+                    line.startsWith("        const videoURL ") -> url = line.substring(26, line.length - 2)
+                    line.startsWith("        const videoURLDescrypt ") -> key = line.substring(56, line.length - 3)
+                }
+            }*/
+
+            val gays = "Url：$url，Key：$key"
+            println(gays)
+
+            if (url.isNotBlank() && key.isNotBlank()) {
+                try {
+                    TeleResult.Success(TeleVideo(TeleUtils.decryptCossoraLink(url, key)))
+                } catch (e: Exception) {
+                    TeleResult.Failure(IllegalStateException("解密Cossora视频失败（悲）", e))
+                }
+            } else TeleResult.Failure(IllegalStateException("我们中出了叛徒（恼）：$gays"))
+        }
+
+        else -> TeleResult.Failure(NotImplementedError("还没实现一个一个"))
+    }
+
+    override fun configureRequest(builder: HttpRequestBuilder) = builder.run {
+        header(HttpHeaders.Referrer, TELE_BASE_URL)
+    }
+
+    companion object {
+        fun build(videoRes: TeleVideoRes): TeleVideoQuery {
+            val url = videoRes.videoType.baseUrl + videoRes.data
+            val videoType = videoRes.videoType
+
+            println("创建查询-视频：$url，$videoType")
+
+            return TeleVideoQuery(url, videoType)
+        }
+    }
 }

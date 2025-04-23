@@ -7,8 +7,10 @@ import io.ktor.client.engine.http
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.http.isSuccess
 import org.jsoup.Jsoup
 
+// TODO：其实应该允许直接传入一个 Http客户端
 data class TeleFetcherConfig(
     val ktorEngine: HttpClientEngineFactory<*>,
     val httpProxyUrl: String? = null,
@@ -38,21 +40,21 @@ class TeleFetcher(teleFetcherConfig: TeleFetcherConfig) {
     suspend fun <RESULT_TYPE> fetch(query: TeleQuery<RESULT_TYPE>): TeleResult<RESULT_TYPE> {
         return try {
             val url = query.url
-            val response = httpClient.get(url)
+            val response = httpClient.get(url) { query.configureRequest(this) }
 
-            if (response.status.value != 200) {
-                TeleResult.Failure(TeleException("HttpClient failed to fetch (${response.status.value}): $url"))
-            } else {
+            if (response.status.isSuccess()) {
                 try {
+                    // TODO：以后没准引入让query自行处理返回的机制
                     val bodyText = response.bodyAsText()
                     val document = Jsoup.parse(bodyText)
+
                     val result = query.parseDocument(document)
 
                     TeleResult.Success(result)
                 } catch (e: Exception) {
                     TeleResult.Failure(TeleException("Failed to parse response: ${e.stackTraceToString()}"))
                 }
-            }
+            } else TeleResult.Failure(TeleException("HttpClient failed to fetch (${response.status.value}): $url"))
         } catch (e: Exception) {
             TeleResult.Failure(TeleException("Failed to fetch: ${e.stackTraceToString()}"))
         }
