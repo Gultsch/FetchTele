@@ -302,8 +302,8 @@ class TeleEntryQuery private constructor(
 data class TeleVideo(val videoUrl: String)
 
 class TeleVideoQuery private constructor(override val url: String, private val videoType: TeleVideoType) :
-    TeleQuery<TeleResult<TeleVideo>> {
-    override fun parseDocument(document: Document): TeleResult<TeleVideo> = when (videoType) {
+    TeleQuery<TeleVideo> {
+    override fun parseDocument(document: Document): TeleVideo = when (videoType) {
         COSSORA -> {
             val chosenOne = document.select("script")[10].data().lines()
 
@@ -326,14 +326,14 @@ class TeleVideoQuery private constructor(override val url: String, private val v
 
             if (url.isNotBlank() && key.isNotBlank()) {
                 try {
-                    TeleResult.Success(TeleVideo(TeleUtils.decryptCossoraLink(url, key)))
+                    TeleVideo(TeleUtils.decryptCossoraLink(url, key))
                 } catch (e: Exception) {
-                    TeleResult.Failure(IllegalStateException("解密Cossora视频失败（悲）", e))
+                    throw IllegalStateException("解密Cossora视频失败（悲）", e)
                 }
-            } else TeleResult.Failure(IllegalStateException("我们中出了叛徒（恼）：$gays"))
+            } else throw IllegalStateException("我们中出了叛徒（恼）：$gays")
         }
 
-        else -> TeleResult.Failure(NotImplementedError("还没实现一个一个"))
+        else -> throw NotImplementedError("还没实现一个一个")
     }
 
     override fun configureRequest(builder: HttpRequestBuilder) = builder.run {
