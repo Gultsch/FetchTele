@@ -1,61 +1,109 @@
 ﻿package lib.fetchtele
 
-import io.ktor.util.reflect.instanceOf
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.text.Charsets
 
+object TeleLogUtils {
+    enum class Level(val value: String) { DEBUG("D"), INFO("I"), WARN("W"), ERROR("E") }
+
+    /**
+     * Data class holding log information.
+     * Cannot be a `data class` because of the `vararg` constructor parameter.
+     *
+     * @property level The severity level of the log message.
+     * @property tag A tag identifying the source of the log message (e.g., class name).
+     * @property messages The content of the log message(s). The last element might be a Throwable for ERROR level.
+     */
+    class Log(val level: Level, val tag: String, vararg val messages: Any?) {
+    }
+
+    /**
+     * The default logger implementation that prints to standard out/err.
+     * Handles the convention that the last argument for ERROR might be a Throwable.
+     */
+    private val defaultLogger: (Log) -> Unit = { log ->
+        var throwable: Throwable? = null
+        val messageContent: List<Any?>
+
+        // Check if the last argument for an ERROR log is a Throwable
+        if (log.level == Level.ERROR && log.messages.isNotEmpty() && log.messages.last() is Throwable) {
+            throwable = log.messages.last() as Throwable
+            // Use all messages except the last one for the main log string
+            messageContent = log.messages.dropLast(1)
+        } else {
+            // Use all messages for the main log string
+            messageContent = log.messages.toList() // Convert vararg to list for consistent handling
+        }
+
+        // Format the message part by joining the non-throwable arguments
+        val messageString = messageContent.joinToString(" ") { it?.toString() ?: "null" }
+
+        // Prepare the final log line
+        val logLine = "[${log.level.name}] ${log.tag} > $messageString"
+
+        // Print log line to appropriate stream (stderr for WARN/ERROR)
+        when (log.level) {
+            Level.WARN, Level.ERROR -> System.err.println(logLine)
+            else -> println(logLine)
+        }
+
+        // Print stack trace to stderr if a throwable was found
+        throwable?.let {
+            val sw = StringWriter()
+            it.printStackTrace(PrintWriter(sw))
+            System.err.print(sw.toString()) // Use print to avoid extra newline after stacktrace
+        }
+    }
+
+    /** The currently active logger function. Initially set to the default logger. */
+    @Volatile // Ensure visibility across threads, though assignment isn't atomic
+    private var currentLogger: (Log) -> Unit = defaultLogger
+
+    /**
+     * Sets a logger implementation.
+     * When a logger is set (not null), the default logger is disabled,
+     * and all log messages are routed to the provided logger.
+     * If `null` is passed, the logger reverts to the default one.
+     *
+     * @param logger The logger function `(TeleLogger.Log) -> Unit`, or `null` to reset to default.
+     */
+    internal fun setLogger(logger: ((Log) -> Unit)?) {
+        currentLogger = logger ?: defaultLogger
+    }
+
+    /** Logs a DEBUG message. */
+    fun d(tag: String, vararg messages: Any?) {
+        // Optimization: Could check log level here if the logger supported it,
+        // but for now, always create the Log object and delegate.
+        currentLogger(Log(Level.DEBUG, tag, *messages)) // Use spread operator (*)
+    }
+
+    /** Logs an INFO message. */
+    fun i(tag: String, vararg messages: Any?) {
+        currentLogger(Log(Level.INFO, tag, *messages))
+    }
+
+    /** Logs a WARN message. */
+    fun w(tag: String, vararg messages: Any?) {
+        currentLogger(Log(Level.WARN, tag, *messages))
+    }
+
+    /**
+     * Logs an ERROR message.
+     * Conventionally, the last argument in `messages` may be a `Throwable`.
+     * The active logger implementation is responsible for handling this.
+     */
+    fun e(tag: String, vararg messages: Any?) {
+        currentLogger(Log(Level.ERROR, tag, *messages))
+    }
+}
+
 object TeleUtils {
-    private val teleResParsers = mutableListOf<TeleResParser<*, *>>()
-
-    // TODO：弱智，仅当Res类被加载时才能触发其自注册，呃呃；还是静态注册罢
-    internal fun <RES_TYPE, RAW_TYPE> registerTeleResParser(parser: TeleResParser<RES_TYPE, RAW_TYPE>) {
-        println("工具-（内部方法）解析器注册：${parser.javaClass}")
-
-        teleResParsers.add(parser)
-    }
-
-    // TODO：尝试解析为资源，返回解析成功的资源列表
-    fun Any.tryParseToTeleRes(): List<TeleRes<*>> {
-        val resList = mutableListOf<TeleRes<*>>()
-
-        println("工具-尝试解析为资源：$this")
-
-        // 如果是TeleLink就尝试提取其url
-        val that = if (this.instanceOf(TeleLink::class)) (this as TeleLink).url else this
-
-        teleResParsers.forEachIndexed { index, it ->
-            try {
-                println("工具-解析（${index}）：${it.javaClass}")
-
-                val res = it.call<TeleRes<*>>("parse", that)!! // 比较奇技淫巧的
-                resList.add(res)
-            } catch (e: Exception) {
-                println("工具-解析失败（${index}）：${e.stackTraceToString()}")
-            }
-        }
-
-        return resList
-    }
-
-    internal fun <T> Any.call(methodName: String, vararg args: Any?): T? {
-        // 总体比较奇技淫巧的，纯纯的反射
-        // 或不可调用Unit方法（？），没试过
-        return try {
-            println("工具-反射调用：$methodName")
-            val method =
-                this::class.java.methods.firstOrNull { it.name == methodName && it.parameterCount == args.size }
-                    ?: throw NoSuchMethodException("Method $methodName with ${args.size} parameters not found")
-
-            method.invoke(this, *args) as T
-        } catch (e: Exception) {
-            println("工具-反射调用失败（$methodName）：${e.stackTraceToString()}")
-            null
-        }
-    }
-
     /**
      * 使用 AES/CBC/PKCS5Padding 解密经过特定格式编码的链接或数据。
      *
@@ -69,7 +117,7 @@ object TeleUtils {
             val decodedBytes = Base64.getDecoder().decode(base64CiphertextWithIv)
 
             // 检查解码后的数据长度是否足够包含 IV (16 字节)
-            if (decodedBytes.size < 16) throw IllegalArgumentException("你怎么这么短啊细狗？连16都没有")
+            if (decodedBytes.size < 16) throw IllegalArgumentException("Invalid Base64 data: shorter than 16 bytes")
 
             // 2. 分离 IV 和密文
             // IV 是前 16 个字节
@@ -98,7 +146,7 @@ object TeleUtils {
             String(decryptedBytes, Charsets.UTF_8)
 
         } catch (e: Exception) {
-            throw RuntimeException("解码失败一个", e)
+            throw RuntimeException("Decryption failed: ${e.message}", e)
         }
     }
 }

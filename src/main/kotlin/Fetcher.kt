@@ -1,40 +1,22 @@
 package lib.fetchtele
 
 import io.ktor.client.*
-import io.ktor.client.engine.HttpClientEngineFactory
-import io.ktor.client.engine.ProxyBuilder
-import io.ktor.client.engine.http
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.isSuccess
 import org.jsoup.Jsoup
 
 // TODO：其实应该允许直接传入一个 Http客户端
-data class TeleFetcherConfig(
-    val ktorEngine: HttpClientEngineFactory<*>,
-    val httpProxyUrl: String? = null,
-    val timeout: Long = 10_000,
-    // 暂无法实现
-    // val enableDebugLog: Boolean = false,
+class TeleFetcherConfig(
+    val ktorHttpClient: HttpClient,
+    val teleLogger: ((TeleLogUtils.Log) -> Unit)? = null
 )
 
 class TeleFetcher(teleFetcherConfig: TeleFetcherConfig) {
-    private val httpClient = HttpClient(teleFetcherConfig.ktorEngine) {
-        // 如果有代理配置，就设置代理
-        teleFetcherConfig.httpProxyUrl?.let {
-            engine {
-                proxy = ProxyBuilder.http(it)
-            }
-        }
-
-        // 设置请求超时时间
-        install(HttpTimeout) {
-            requestTimeoutMillis = teleFetcherConfig.timeout
-        }
-    }
+    private val httpClient = teleFetcherConfig.ktorHttpClient
 
     init {
+        teleFetcherConfig.teleLogger?.let { TeleLogUtils.setLogger(it) }
     }
 
     suspend fun <RESULT_TYPE> fetch(query: TeleQuery<RESULT_TYPE>): TeleResult<RESULT_TYPE> {

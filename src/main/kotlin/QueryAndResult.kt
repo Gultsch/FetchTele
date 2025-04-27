@@ -3,7 +3,6 @@
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
-import lib.fetchtele.TeleVideoType.*
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
@@ -11,7 +10,7 @@ const val TELE_BASE_URL = "https://cosplaytele.com/"
 
 sealed class TeleResult<RESULT_TYPE> {
     data class Success<RESULT_TYPE>(val data: RESULT_TYPE) : TeleResult<RESULT_TYPE>()
-    data class Failure<RESULT_TYPE>(val error: Throwable) : TeleResult<RESULT_TYPE>()
+    data class Failure<RESULT_TYPE>(val error: Exception) : TeleResult<RESULT_TYPE>()
 }
 
 interface TeleQuery<RESULT_TYPE> {
@@ -50,10 +49,10 @@ class TeleListQuery private constructor(override val url: String) : TeleQuery<Te
                         val url = textElement.attr("href")
                         val name = url.substring(24, url.length - 1)
 
-                        println("解析-实体概况：【标题：$title, Id：$name, 图片链接: $imageUrl】")
+                        TeleLogUtils.d(TAG, "解析", "实体概况", "【标题：$title, Id：$name, 图片链接: $imageUrl】")
                         entries.add(TeleEntrySummary(title = TeleLink(url, title), id = name, imageUrl = imageUrl))
                     } catch (e: Exception) {
-                        println("Failed to parse entry summary: \n${e.stackTraceToString()}\n$element")
+                        TeleLogUtils.e(TAG, "解析实体概况失败", e)
                     }
                 }
 
@@ -74,7 +73,6 @@ class TeleListQuery private constructor(override val url: String) : TeleQuery<Te
                     else it
                 }
 
-                // println(firstNumEle)
                 val min = firstNumEle.firstElementChild()!!.text().toInt()
 
                 // 当前页码
@@ -93,11 +91,11 @@ class TeleListQuery private constructor(override val url: String) : TeleQuery<Te
     }
 
     companion object {
+        private const val TAG = "TeleListQuery"
+
         fun build(
-            categories: TeleCategoryRes? = null,
-            tag: TeleTagRes? = null,
-            keyword: TeleKeywordRes? = null,
-            page: Int = 1,
+            categories: TeleCategoryRes? = null, tag: TeleTagRes? = null,
+            keyword: TeleKeywordRes? = null, page: Int = 1,
         ): TeleListQuery {
             var url = TELE_BASE_URL
 
@@ -119,7 +117,7 @@ class TeleListQuery private constructor(override val url: String) : TeleQuery<Te
                 if (page > 1) url += "page/$page/"
             }
 
-            println("创建查询-列表：$url")
+            TeleLogUtils.d(TAG, "创建查询-列表：$url")
 
             return TeleListQuery(url)
         }
@@ -162,7 +160,7 @@ class TeleEntryQuery private constructor(
             // 标题
             val title = document.selectFirst(".entry-title")!!.text()
 
-            println("解析-标题：$title")
+            TeleLogUtils.d(TAG, "解析-标题：$title")
 
             // 分类
             val categories = mutableListOf<TeleLink>()
@@ -170,7 +168,7 @@ class TeleEntryQuery private constructor(
                 val url = it.attr("href")
                 val text = it.text()
 
-                println("解析-分类：【$text：$url】")
+                TeleLogUtils.d(TAG, "解析-分类：【$text：$url】")
 
                 categories.add(TeleLink(url, text))
             }
@@ -188,7 +186,7 @@ class TeleEntryQuery private constructor(
 
                     val pair = strongText.split(": ")
 
-                    println("解析-元数据：${pair[0]}")
+                    TeleLogUtils.d(TAG, "解析-元数据：${pair[0]}")
 
                     when (pair[0]) {
                         "Cosplayer" -> cosplayer = strong.parseLinkableStrong(pair[1])
@@ -203,7 +201,7 @@ class TeleEntryQuery private constructor(
 
                         "Unzip Password:" -> unzipPassword = it.selectFirst("input")!!.attr("value")
 
-                        else -> println("解析-找到未知元数据：${pair[0]}")
+                        else -> TeleLogUtils.d(TAG, "解析-找到未知元数据：${pair[0]}")
                     }
                 }
             }
@@ -216,7 +214,7 @@ class TeleEntryQuery private constructor(
                 // 如果有链接才添加
                 button.attr("href").let {
                     if (it.isNotEmpty()) {
-                        println("解析-下载链接：【${buttonText}：$it】")
+                        TeleLogUtils.d(TAG, "解析-下载链接：【${buttonText}：$it】")
                         downloadLinks.add(TeleLink(url = it, text = buttonText))
                     }
                 }
@@ -229,11 +227,10 @@ class TeleEntryQuery private constructor(
 
                 if (!src.startsWith("https://cossora.stream/embed/")) return@forEach
 
-                println("解析-视频：$src")
+                TeleLogUtils.d(TAG, "解析-视频：$src")
 
+                // TODO：整合已有解析能力
                 video = TeleLink(url = src)
-
-                // TODO：从视频iFrame解析视频地址
             }
 
             // 图片
@@ -241,7 +238,7 @@ class TeleEntryQuery private constructor(
             document.select(".gallery-item").forEach {
                 val src = it.firstElementChild()!!.firstElementChild()!!.attr("href")
 
-                println("解析-图片：$src")
+                TeleLogUtils.d(TAG, "解析-图片：$src")
 
                 images.add(TeleLink(url = src))
             }
@@ -270,6 +267,8 @@ class TeleEntryQuery private constructor(
     }
 
     companion object {
+        private const val TAG = "TeleEntryQuery"
+
         // 解析可能是超链接的强调文本
         internal fun Element.parseLinkableStrong(fallbackText: String): TeleLink {
             val linkElement = selectFirst("a")
@@ -290,7 +289,7 @@ class TeleEntryQuery private constructor(
         fun build(entryId: TeleEntryRes): TeleEntryQuery {
             val url = "$TELE_BASE_URL${entryId.data}/"
 
-            println("创建查询-实体：$url")
+            TeleLogUtils.d(TAG, "创建查询：$url")
 
             return TeleEntryQuery(url, entryId.data)
         }
@@ -301,10 +300,10 @@ class TeleEntryQuery private constructor(
 
 data class TeleVideo(val videoUrl: String)
 
-class TeleVideoQuery private constructor(override val url: String, private val videoType: TeleVideoType) :
+class TeleVideoQuery private constructor(override val url: String, private val videoType: TeleVideoRes.VideoType) :
     TeleQuery<TeleVideo> {
     override fun parseDocument(document: Document): TeleVideo = when (videoType) {
-        COSSORA -> {
+        TeleVideoRes.VideoType.COSSORA -> {
             val chosenOne = document.select("script")[10].data().lines()
 
             var url = chosenOne[3].run { substring(26, length - 2) }
@@ -322,30 +321,36 @@ class TeleVideoQuery private constructor(override val url: String, private val v
             }*/
 
             val gays = "Url：$url，Key：$key"
-            println(gays)
+            TeleLogUtils.d(TAG, gays)
 
             if (url.isNotBlank() && key.isNotBlank()) {
                 try {
                     TeleVideo(TeleUtils.decryptCossoraLink(url, key))
                 } catch (e: Exception) {
-                    throw IllegalStateException("解密Cossora视频失败（悲）", e)
+                    throw IllegalStateException("Can't decrypt video link: $gays", e)
                 }
-            } else throw IllegalStateException("我们中出了叛徒（恼）：$gays")
+            } else throw IllegalStateException("The url or key is empty: $gays")
         }
 
-        else -> throw NotImplementedError("还没实现一个一个")
+        else -> throw NotImplementedError()
     }
 
     override fun configureRequest(builder: HttpRequestBuilder) = builder.run {
-        header(HttpHeaders.Referrer, TELE_BASE_URL)
+        when (videoType) {
+            TeleVideoRes.VideoType.COSSORA -> header(HttpHeaders.Referrer, TELE_BASE_URL)
+
+            else -> throw NotImplementedError()
+        }
     }
 
     companion object {
+        private const val TAG = "TeleVideoQuery"
+
         fun build(videoRes: TeleVideoRes): TeleVideoQuery {
             val url = videoRes.videoType.baseUrl + videoRes.data
             val videoType = videoRes.videoType
 
-            println("创建查询-视频：$url，$videoType")
+            TeleLogUtils.d(TAG, "创建查询：$url，$videoType")
 
             return TeleVideoQuery(url, videoType)
         }

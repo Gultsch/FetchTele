@@ -12,15 +12,12 @@ interface TeleResParser<RES_TYPE, RAW_TYPE> {
     fun parse(raw: RAW_TYPE): TeleRes<RES_TYPE> // TODO：要不要改为 tryParse；怎么搞“统一解析”
 }
 
-class TeleCategoryRes(override val data: String) : TeleRes<String> {
+data class TeleCategoryRes(override val data: String) : TeleRes<String> {
     override val type: String = "category"
 
     companion object : TeleResParser<String, String> {
-        init {
-            TeleUtils.registerTeleResParser(this)
-        }
-
-        // 由社区推荐
+        // 不再内建
+        /*// 由社区推荐
         val VIDEO_COSPLAY = TeleCategoryRes("video-cosplay") // 视频
 
         // 分级
@@ -41,7 +38,9 @@ class TeleCategoryRes(override val data: String) : TeleRes<String> {
         val BYORU = TeleCategoryRes("byoru") // ビョル
         val XIAO_DING = TeleCategoryRes("xiaoding") // 小丁
         val RIOKO = TeleCategoryRes("rioko") // 凉凉子
-        val STICKY_BUNNY = TeleCategoryRes("sticky-bunny") // 咬一口兔娘ovo
+        val STICKY_BUNNY = TeleCategoryRes("sticky-bunny") // 咬一口兔娘ovo*/
+
+        private const val TAG = "TeleCategoryRes"
 
         override fun parse(raw: String): TeleCategoryRes {
             // https://cosplaytele.com/category/DATA/
@@ -57,40 +56,17 @@ class TeleCategoryRes(override val data: String) : TeleRes<String> {
             if (data.isEmpty())
                 throw IllegalArgumentException("Empty data in TeleCategoryRes url: $raw")
 
-            println("TeleCategoryRes解析：$data")
+            TeleLogUtils.d(TAG, "解析", data)
             return TeleCategoryRes(data)
         }
     }
 }
 
-class TeleTagRes(override val data: String) : TeleRes<String> {
+data class TeleTagRes(override val data: String) : TeleRes<String> {
     override val type: String = "tag"
 
     companion object : TeleResParser<String, String> {
-        init {
-            TeleUtils.registerTeleResParser(this)
-        }
-
-        // 游戏：是的这几个是标签
-        val GODNESS_OF_VICTORY_NIKKE = TeleTagRes("nikke")
-        val HONKAI_STAR_RAIL = TeleTagRes("honkai-star-rail")
-        val BLUE_ARCHIVE = TeleTagRes("blue-archive")
-        val LEAGUE_OF_LEGENDS = TeleTagRes("league-of-legends")
-        val FINAL_FANTASY = TeleTagRes("final-fantasy")
-        val ARKNIGHTS = TeleTagRes("arknights")
-        val VALORANT = TeleTagRes("valorant")
-
-        // 动漫
-        val RE_ZERO = TeleTagRes("rezero")
-        val NIE_RI_AUTOMATA = TeleTagRes("nierautomata")
-        val SONO_BISQUE_DOLL = TeleTagRes("sono-bisque-doll")
-        val SPY_X_FAMILY = TeleTagRes("spy-x-family")
-        // TODO
-
-        // 其他
-        val MAID = TeleTagRes("maid")
-        val SCHOOL_GIRL = TeleTagRes("school-girl")
-        val ELF = TeleTagRes("elf")
+        private const val TAG = "TeleTagRes"
 
         override fun parse(raw: String): TeleTagRes {
             // Check for valid URL prefix and ensure it ends with '/'
@@ -107,13 +83,13 @@ class TeleTagRes(override val data: String) : TeleRes<String> {
                 throw IllegalArgumentException("Empty data in TeleTagRes url: $raw")
             }
 
-            println("TeleTagRes解析：$data")
+            TeleLogUtils.d(TAG, "TeleTagRes解析：$data")
             return TeleTagRes(data)
         }
     }
 }
 
-// TODO：也需要弃用
+/*// TODO：也需要弃用
 class TeleSectionRes(override val data: String) : TeleRes<String> {
     override val type: String = "section"
 
@@ -136,17 +112,15 @@ class TeleSectionRes(override val data: String) : TeleRes<String> {
             TODO()
         }
     }
-}
+}*/
 
-class TeleKeywordRes(override val data: String) : TeleRes<String> {
+data class TeleKeywordRes(override val data: String) : TeleRes<String> {
     val encoded: String = data.encodeURLQueryComponent()
 
     override val type: String = "keyword"
 
     companion object : TeleResParser<String, String> {
-        init {
-            TeleUtils.registerTeleResParser(this)
-        }
+        private const val TAG = "TeleKeywordRes"
 
         override fun parse(raw: String): TeleKeywordRes {
             // 检查 URL 是否以 BASE_URL 开头，并包含 "?s="
@@ -161,20 +135,18 @@ class TeleKeywordRes(override val data: String) : TeleRes<String> {
                 throw IllegalArgumentException("Empty data in TeleKeywordRes url: $raw")
 
 
-            println("TeleKeywordRes解析：$data")
+            TeleLogUtils.d(TAG, "解析：$data")
             return TeleKeywordRes(data)
         }
 
     }
 }
 
-class TeleEntryRes(override val data: String) : TeleRes<String> {
+data class TeleEntryRes(override val data: String) : TeleRes<String> {
     override val type: String = "entry"
 
     companion object : TeleResParser<String, String> {
-        init {
-            TeleUtils.registerTeleResParser(this)
-        }
+        private const val TAG = "TeleEntryRes"
 
         override fun parse(raw: String): TeleEntryRes {
             if (!raw.startsWith(TELE_BASE_URL) && raw.length < 24 && raw.last() != '/')
@@ -188,16 +160,10 @@ class TeleEntryRes(override val data: String) : TeleRes<String> {
             if (data.contains('/'))
                 throw IllegalArgumentException("Illegal data in TeleEntryRes url: $raw")
 
-            println("TeleEntryRes解析：$data")
+            TeleLogUtils.d(TAG, "解析：$data")
             return TeleEntryRes(data)
         }
     }
-}
-
-enum class TeleVideoType(val baseUrl: String) {
-    COSSORA("https://cossora.stream/embed/");
-    // Add other video types here with their base URLs, e.g.,
-    // OTHER_DOMAIN("https://other.video/play/")
 }
 
 // 特别一点，仅能由parse创建实例
@@ -207,13 +173,17 @@ enum class TeleVideoType(val baseUrl: String) {
  * @property data The unique identifier for the video within its domain (e.g., "5471f32717").
  * @property videoType The domain/type of the video source.
  */
-class TeleVideoRes(override val data: String, val videoType: TeleVideoType) : TeleRes<String> {
+data class TeleVideoRes(override val data: String, val videoType: VideoType) : TeleRes<String> {
+    enum class VideoType(val baseUrl: String) {
+        COSSORA("https://cossora.stream/embed/");
+        // Add other video types here with their base URLs, e.g.,
+        // OTHER_DOMAIN("https://other.video/play/")
+    }
+
     override val type: String = "video" // Consistent type identifier
 
     companion object : TeleResParser<String, String> {
-        init {
-            TeleUtils.registerTeleResParser(this)
-        }
+        private const val TAG = "TeleVideoRes"
 
         /**
          * Parses a raw URL string into a TeleVideoRes object.
@@ -228,7 +198,7 @@ class TeleVideoRes(override val data: String, val videoType: TeleVideoType) : Te
         override fun parse(raw: String): TeleVideoRes {
             // 移除初始 URL() 检查
 
-            for (videoType in TeleVideoType.entries) {
+            for (videoType in VideoType.entries) {
                 if (raw.startsWith(videoType.baseUrl)) {
                     // 检查是否只有 base URL，没有标识符
                     if (raw.length == videoType.baseUrl.length) throw IllegalArgumentException(
@@ -250,7 +220,7 @@ class TeleVideoRes(override val data: String, val videoType: TeleVideoType) : Te
                     )
                     // 添加更多特定域的 ID 格式校验...
 
-                    println("TeleVideoRes解析：类型=${videoType.name}，数据=$data")
+                    TeleLogUtils.d(TAG, "解析：类型=${videoType.name}，数据=$data")
                     return TeleVideoRes(data, videoType)
                 }
             }
