@@ -8,7 +8,7 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.text.Charsets
 
-object TeleLogUtils {
+object TeleLog {
     enum class Level(val value: String) { DEBUG("D"), INFO("I"), WARN("W"), ERROR("E") }
 
     /**
@@ -19,14 +19,14 @@ object TeleLogUtils {
      * @property tag A tag identifying the source of the log message (e.g., class name).
      * @property messages The content of the log message(s). The last element might be a Throwable for ERROR level.
      */
-    class Log(val level: Level, val tag: String, vararg val messages: Any?) {
+    class LogLine(val level: Level, val tag: String, vararg val messages: Any?) {
     }
 
     /**
      * The default logger implementation that prints to standard out/err.
      * Handles the convention that the last argument for ERROR might be a Throwable.
      */
-    private val defaultLogger: (Log) -> Unit = { log ->
+    private val defaultLogger: (LogLine) -> Unit = { log ->
         var throwable: Throwable? = null
         val messageContent: List<Any?>
 
@@ -62,7 +62,7 @@ object TeleLogUtils {
 
     /** The currently active logger function. Initially set to the default logger. */
     @Volatile // Ensure visibility across threads, though assignment isn't atomic
-    private var currentLogger: (Log) -> Unit = defaultLogger
+    private var currentLogger: (LogLine) -> Unit = defaultLogger
 
     /**
      * Sets a logger implementation.
@@ -72,7 +72,7 @@ object TeleLogUtils {
      *
      * @param logger The logger function `(TeleLogger.Log) -> Unit`, or `null` to reset to default.
      */
-    internal fun setLogger(logger: ((Log) -> Unit)?) {
+    internal fun setLogger(logger: ((LogLine) -> Unit)?) {
         currentLogger = logger ?: defaultLogger
     }
 
@@ -80,17 +80,17 @@ object TeleLogUtils {
     fun d(tag: String, vararg messages: Any?) {
         // Optimization: Could check log level here if the logger supported it,
         // but for now, always create the Log object and delegate.
-        currentLogger(Log(Level.DEBUG, tag, *messages)) // Use spread operator (*)
+        currentLogger(LogLine(Level.DEBUG, tag, *messages)) // Use spread operator (*)
     }
 
     /** Logs an INFO message. */
     fun i(tag: String, vararg messages: Any?) {
-        currentLogger(Log(Level.INFO, tag, *messages))
+        currentLogger(LogLine(Level.INFO, tag, *messages))
     }
 
     /** Logs a WARN message. */
     fun w(tag: String, vararg messages: Any?) {
-        currentLogger(Log(Level.WARN, tag, *messages))
+        currentLogger(LogLine(Level.WARN, tag, *messages))
     }
 
     /**
@@ -99,11 +99,13 @@ object TeleLogUtils {
      * The active logger implementation is responsible for handling this.
      */
     fun e(tag: String, vararg messages: Any?) {
-        currentLogger(Log(Level.ERROR, tag, *messages))
+        currentLogger(LogLine(Level.ERROR, tag, *messages))
     }
 }
 
 object TeleUtils {
+    private const val TAG = "TeleUtils"
+
     /**
      * 使用 AES/CBC/PKCS5Padding 解密经过特定格式编码的链接或数据。
      *

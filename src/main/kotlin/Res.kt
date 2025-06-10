@@ -16,30 +16,6 @@ data class TeleCategoryRes(override val data: String) : TeleRes<String> {
     override val type: String = "category"
 
     companion object : TeleResParser<String, String> {
-        // 不再内建
-        /*// 由社区推荐
-        val VIDEO_COSPLAY = TeleCategoryRes("video-cosplay") // 视频
-
-        // 分级
-        val NUDE = TeleCategoryRes("nude") // 裸体
-        val NO_NUDE = TeleCategoryRes("no-nude") // 非裸体
-        val COSPLAY = TeleCategoryRes("cosplay") // 角色扮演
-
-        // 游戏：是的这几个是类别
-        val GENSHIN_IMPACT = TeleCategoryRes("genshin-impact") // 原神
-        val FATE_GRAND_ORDER = TeleCategoryRes("fate-grand-order") // 命运-冠位指定
-        val AZUR_LANE = TeleCategoryRes("azur-lane") // 碧蓝航线
-
-        // 人物
-        val NEKOKOYOSHI = TeleCategoryRes("nekokoyoshi") // 爆机少女喵小吉
-        val ARTY_HUANG = TeleCategoryRes("artyhuang") // Arty亚缇
-        val AQUA = TeleCategoryRes("aqua") // 水淼
-        val UMEKO_J = TeleCategoryRes("umeko-j")
-        val BYORU = TeleCategoryRes("byoru") // ビョル
-        val XIAO_DING = TeleCategoryRes("xiaoding") // 小丁
-        val RIOKO = TeleCategoryRes("rioko") // 凉凉子
-        val STICKY_BUNNY = TeleCategoryRes("sticky-bunny") // 咬一口兔娘ovo*/
-
         private const val TAG = "TeleCategoryRes"
 
         override fun parse(raw: String): TeleCategoryRes {
@@ -56,7 +32,7 @@ data class TeleCategoryRes(override val data: String) : TeleRes<String> {
             if (data.isEmpty())
                 throw IllegalArgumentException("Empty data in TeleCategoryRes url: $raw")
 
-            TeleLogUtils.d(TAG, "解析", data)
+            TeleLog.d(TAG, "解析", data)
             return TeleCategoryRes(data)
         }
     }
@@ -83,7 +59,7 @@ data class TeleTagRes(override val data: String) : TeleRes<String> {
                 throw IllegalArgumentException("Empty data in TeleTagRes url: $raw")
             }
 
-            TeleLogUtils.d(TAG, "TeleTagRes解析：$data")
+            TeleLog.d(TAG, "TeleTagRes解析：$data")
             return TeleTagRes(data)
         }
     }
@@ -114,12 +90,14 @@ class TeleSectionRes(override val data: String) : TeleRes<String> {
     }
 }*/
 
-data class TeleKeywordRes(override val data: String) : TeleRes<String> {
-    val encoded: String = data.encodeURLQueryComponent()
-
+data class TeleKeywordRes(override val data: Keyword) : TeleRes<TeleKeywordRes.Keyword> {
     override val type: String = "keyword"
 
-    companion object : TeleResParser<String, String> {
+    data class Keyword(val raw: String) {
+        val encoded: String = raw.encodeURLQueryComponent()
+    }
+
+    companion object : TeleResParser<Keyword, String> {
         private const val TAG = "TeleKeywordRes"
 
         override fun parse(raw: String): TeleKeywordRes {
@@ -135,10 +113,97 @@ data class TeleKeywordRes(override val data: String) : TeleRes<String> {
                 throw IllegalArgumentException("Empty data in TeleKeywordRes url: $raw")
 
 
-            TeleLogUtils.d(TAG, "解析：$data")
-            return TeleKeywordRes(data)
+            TeleLog.d(TAG, "解析：$data")
+            return TeleKeywordRes(Keyword(data))
         }
 
+    }
+}
+
+data class TeleEntryInfoRes(override val data: EntryInfo) : TeleRes<TeleEntryInfoRes.EntryInfo> {
+    override val type: String = "entry_info"
+
+    enum class EntryType {
+        COSPLAY,
+        FREESTYLE
+    }
+
+    data class EntryInfo(
+        val title: String,
+        val author: String,
+        val type: EntryType,
+        val photoCount: Int,
+        val hasVideo: Boolean
+    )
+
+    companion object : TeleResParser<EntryInfo, String> {
+        private const val TAG = "TeleEntryInfoRes"
+
+        override fun parse(raw: String): TeleRes<EntryInfo> {
+            try {
+                // 1. 提取图片和视频信息（这部分格式相对固定，通常在末尾）
+                // 正则表达式匹配:
+                // - "..." 里的内容 (Group 1)
+                // - 或者 "Only Video..." (Group 2)
+                val mediaRegex = Regex("""[“"](.*?)[”"]|( – Only Video.*$)""")
+                val mediaMatch = mediaRegex.find(raw)
+
+                val mediaString = mediaMatch?.let {
+                    it.groups[1]?.value?.takeIf { it.isNotBlank() } ?: it.groups[2]?.value
+                } ?: ""
+
+                // 从提取出的媒体信息中计算数量
+                val photoCount = Regex("""(\d+)\s+photos?""").find(mediaString)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                // gif也算为视频？
+                val hasVideo =
+                    mediaString.contains("video", ignoreCase = true) || mediaString.contains("gif", ignoreCase = true)
+
+                // 2. 获取主要内容部分（移除了媒体信息的部分）
+                val mainPart = mediaMatch?.let { raw.substring(0, it.range.first) }?.trim() ?: raw.trim()
+
+                // 3. 根据是否存在 "cosplay" 关键字来区分类型和解析作者/标题
+                val author: String
+                val title: String
+                val type: EntryType
+
+                if (mainPart.contains(" cosplay ", ignoreCase = true)) {
+                    type = EntryType.COSPLAY
+                    // 按 " cosplay " 分割，不区分大小写
+                    val parts = mainPart.split(Regex("\\s+cosplay\\s+", RegexOption.IGNORE_CASE), limit = 2)
+                    if (parts.size != 2) // 如果分割失败，这是一个预料之外的格式，打印错误并返回null
+                        throw IllegalArgumentException("Cosplay行格式无法解析")
+                    author = parts[0].trim()
+                    title = parts[1].trim()
+                } else {
+                    type = EntryType.FREESTYLE
+                    // 按 " – " 或 " - " 分割，处理不规范的横杠和空格
+                    val parts = mainPart.split(Regex("\\s+[–-]\\s+"), limit = 2)
+                    if (parts.size == 2) {
+                        author = parts[0].trim()
+                        title = parts[1].trim()
+                    } else {
+                        // Fallback: 如果没有找到 "–" 或 "-" 分隔符
+                        // 我们可以做一个合理的假设：最后一个词是标题，前面的是作者
+                        // 但根据你的数据，所有FREESTYLE都有分隔符，所以这里更像一个安全保障
+                        val words = mainPart.split(' ')
+                        if (words.size > 1) {
+                            author = words.dropLast(1).joinToString(" ").trim()
+                            title = words.last().trim()
+                        } else {
+                            // 如果只有一个词，无法区分作者和标题，作为 fallback 都设为它
+                            author = mainPart
+                            title = mainPart
+                        }
+                    }
+                }
+
+                return TeleEntryInfoRes(EntryInfo(title, author, type, photoCount, hasVideo))
+
+            } catch (e: Exception) {
+                // 捕获任何意外错误，防止程序崩溃
+                throw TeleException("解析【$raw】失败，只因：${e.message ?: e.toString()}")
+            }
+        }
     }
 }
 
@@ -160,7 +225,7 @@ data class TeleEntryRes(override val data: String) : TeleRes<String> {
             if (data.contains('/'))
                 throw IllegalArgumentException("Illegal data in TeleEntryRes url: $raw")
 
-            TeleLogUtils.d(TAG, "解析：$data")
+            TeleLog.d(TAG, "解析：$data")
             return TeleEntryRes(data)
         }
     }
@@ -220,7 +285,7 @@ data class TeleVideoRes(override val data: String, val videoType: VideoType) : T
                     )
                     // 添加更多特定域的 ID 格式校验...
 
-                    TeleLogUtils.d(TAG, "解析：类型=${videoType.name}，数据=$data")
+                    TeleLog.d(TAG, "解析：类型=${videoType.name}，数据=$data")
                     return TeleVideoRes(data, videoType)
                 }
             }

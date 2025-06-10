@@ -1,16 +1,16 @@
 plugins {
-    kotlin("jvm") version "2.0.21"
-    id("com.gradleup.shadow") version "9.0.0-beta4"
+    kotlin("jvm") version "2.1.21" // 检查更新：https://kotlinlang.org/
+    id("com.gradleup.shadow") version "9.0.0-beta15" // 检查更新：https://plugins.gradle.org/plugin/com.gradleup.shadow
 }
 
 group = "lib.fetchtele"
 
 // 年份/月份/修订
-version = "2025.4.2"
+version = "2025.6.1"
 
 // 记得跟进最新版本
-val ktor_version = "3.0.3"
-val jsoup_version = "1.18.3"
+val ktorVersion = "3.1.3" // 检查更新：https://ktor.io/
+val jsoupVersion = "1.20.1" // 检查更新：https://jsoup.org/
 
 repositories {
     mavenCentral()
@@ -19,10 +19,10 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
-    testImplementation("io.ktor:ktor-client-cio:$ktor_version")
+    testImplementation("io.ktor:ktor-client-cio:$ktorVersion")
 
-    implementation("org.jsoup:jsoup:$jsoup_version")
-    implementation("io.ktor:ktor-client-core:$ktor_version")
+    implementation("org.jsoup:jsoup:$jsoupVersion")
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
 }
 
 tasks {

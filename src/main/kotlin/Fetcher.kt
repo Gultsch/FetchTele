@@ -9,14 +9,14 @@ import org.jsoup.Jsoup
 // TODO：其实应该允许直接传入一个 Http客户端
 class TeleFetcherConfig(
     val ktorHttpClient: HttpClient,
-    val teleLogger: ((TeleLogUtils.Log) -> Unit)? = null
+    val teleLogger: ((TeleLog.LogLine) -> Unit)? = null
 )
 
 class TeleFetcher(teleFetcherConfig: TeleFetcherConfig) {
     private val httpClient = teleFetcherConfig.ktorHttpClient
 
     init {
-        teleFetcherConfig.teleLogger?.let { TeleLogUtils.setLogger(it) }
+        teleFetcherConfig.teleLogger?.let { TeleLog.setLogger(it) }
     }
 
     suspend fun <RESULT_TYPE> fetch(query: TeleQuery<RESULT_TYPE>): TeleResult<RESULT_TYPE> {
