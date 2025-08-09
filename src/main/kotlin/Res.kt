@@ -145,7 +145,7 @@ data class TeleEntryInfoRes(override val data: EntryInfo) : TeleRes<TeleEntryInf
                 // 正则表达式匹配:
                 // - "..." 里的内容 (Group 1)
                 // - 或者 "Only Video..." (Group 2)
-                val mediaRegex = Regex("""[“"](.*?)[”"]|( – Only Video.*$)""")
+                val mediaRegex = Regex("""[“”"](.*?)[”“"]|( – Only Video.*$)""")
                 val mediaMatch = mediaRegex.find(raw)
 
                 val mediaString = mediaMatch?.let {

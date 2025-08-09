@@ -6,7 +6,7 @@ plugins {
 group = "lib.fetchtele"
 
 // 年份/月份/修订
-version = "2025.6.1"
+version = "2025.6.2"
 
 // 记得跟进最新版本
 val ktorVersion = "3.1.3" // 检查更新：https://ktor.io/

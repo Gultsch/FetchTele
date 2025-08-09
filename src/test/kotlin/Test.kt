@@ -177,6 +177,13 @@ class TeleTest {
         assertEquals(81, cosplayNoVideo.data.photoCount)
         assertEquals(false, cosplayNoVideo.data.hasVideo)
         TeleLog.i(TAG, "Cosplay_无视频已通过", cosplayNoVideo.data)
+        val wrongVersion = TeleEntryInfoRes.parse("Artsusu (Art术术) cosplay Yae Meiko – Genshit Impact ” 53 photos”")
+        assertEquals("Artsusu (Art术术)", wrongVersion.data.author)
+        assertEquals(TeleEntryInfoRes.EntryType.COSPLAY, wrongVersion.data.type)
+        assertEquals("Yae Meiko – Genshit Impact", wrongVersion.data.title)
+        assertEquals(53, wrongVersion.data.photoCount)
+        assertEquals(false, wrongVersion.data.hasVideo)
+        TeleLog.i(TAG, "错版兼容性测试已通过", wrongVersion.data)
     }
 
     @Test
