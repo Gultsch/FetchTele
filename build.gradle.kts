@@ -1,16 +1,16 @@
 plugins {
-    kotlin("jvm") version "2.1.21" // 检查更新：https://kotlinlang.org/
-    id("com.gradleup.shadow") version "9.0.0-beta15" // 检查更新：https://plugins.gradle.org/plugin/com.gradleup.shadow
+    kotlin("jvm") version "2.2.10" // 检查更新：https://kotlinlang.org/
+    id("com.gradleup.shadow") version "9.0.2" // 检查更新：https://plugins.gradle.org/plugin/com.gradleup.shadow
 }
 
 group = "lib.fetchtele"
 
 // 年份/月份/修订
-version = "2025.6.2"
+version = "2025.8.1"
 
 // 记得跟进最新版本
-val ktorVersion = "3.1.3" // 检查更新：https://ktor.io/
-val jsoupVersion = "1.20.1" // 检查更新：https://jsoup.org/
+val ktorVersion = "3.2.3" // 检查更新：https://ktor.io/
+val jsoupVersion = "1.21.2" // 检查更新：https://jsoup.org/
 
 repositories {
     mavenCentral()
